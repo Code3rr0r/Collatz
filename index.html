@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>3x+1 (Collatz Conjecture)</title>
+  <title>3x+1 Collatz Conjecture Graph</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,40 +13,85 @@
       padding: 8px;
       font-size: 16px;
     }
-    #output {
-      margin-top: 20px;
+    #chartContainer {
+      margin-top: 30px;
+      max-width: 800px;
     }
   </style>
 </head>
 <body>
 
-  <h1>3x+1 (Collatz Conjecture)</h1>
+  <h1>3x+1 Collatz Conjecture</h1>
   <p>Enter a positive integer:</p>
   <input type="number" id="numberInput" min="1">
-  <button onclick="runCollatz()">Run</button>
+  <button onclick="runCollatz()">Generate Graph</button>
 
-  <div id="output"></div>
+  <div id="chartContainer">
+    <canvas id="collatzChart"></canvas>
+  </div>
 
   <script>
+    let chart; // to hold the Chart.js chart
+
     function runCollatz() {
       let n = parseInt(document.getElementById('numberInput').value);
       if (isNaN(n) || n < 1) {
-        document.getElementById('output').innerHTML = "<p>Please enter a valid positive integer.</p>";
+        alert("Please enter a valid positive integer.");
         return;
       }
 
       let sequence = [n];
       while (n !== 1) {
-        if (n % 2 === 0) {
-          n = n / 2;
-        } else {
-          n = 3 * n + 1;
-        }
+        n = (n % 2 === 0) ? n / 2 : 3 * n + 1;
         sequence.push(n);
       }
 
-      document.getElementById('output').innerHTML = 
-        "<p>Collatz sequence:</p><p>" + sequence.join(" → ") + "</p>";
+      const labels = sequence.map((_, i) => i); // step numbers
+
+      const data = {
+        labels: labels,
+        datasets: [{
+          label: 'Collatz Sequence',
+          data: sequence,
+          fill: false,
+          borderColor: 'blue',
+          tension: 0.2,
+          pointRadius: 3,
+          pointBackgroundColor: 'blue'
+        }]
+      };
+
+      const config = {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Step'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Value'
+              },
+              beginAtZero: true
+            }
+          }
+        }
+      };
+
+      // Destroy previous chart if exists
+      if (chart) chart.destroy();
+
+      // Create new chart
+      chart = new Chart(
+        document.getElementById('collatzChart'),
+        config
+      );
     }
   </script>
 
