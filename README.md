@@ -1,2 +1,1 @@
-# 3x+1
-Collatz Conjecture
+# it is a math problem
