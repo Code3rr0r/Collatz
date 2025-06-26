@@ -15,16 +15,25 @@
     }
     #chartContainer {
       margin-top: 30px;
+      max-width: 100%;
+      width: 100%;
       max-width: 800px;
+    }
+    #sequenceInfo {
+      margin-top: 20px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
   <h1>3x+1 Collatz Conjecture</h1>
-  <p>Enter a positive integer:</p>
-  <input type="number" id="numberInput" min="1">
-  <button onclick="runCollatz()">Generate Graph</button>
+  
+  <label for="numberInput">Enter a positive integer:</label><br>
+  <input type="number" id="numberInput" min="1" placeholder="e.g. 27" aria-label="Positive integer input">
+  <button id="generateBtn" onclick="runCollatz()">Generate Graph</button>
+
+  <div id="sequenceInfo"></div>
 
   <div id="chartContainer">
     <canvas id="collatzChart"></canvas>
@@ -34,64 +43,80 @@
     let chart; // to hold the Chart.js chart
 
     function runCollatz() {
-      let n = parseInt(document.getElementById('numberInput').value);
+      const input = document.getElementById('numberInput');
+      const generateBtn = document.getElementById('generateBtn');
+      const sequenceInfo = document.getElementById('sequenceInfo');
+      let n = parseInt(input.value);
+
       if (isNaN(n) || n < 1) {
         alert("Please enter a valid positive integer.");
         return;
       }
 
-      let sequence = [n];
-      while (n !== 1) {
-        n = (n % 2 === 0) ? n / 2 : 3 * n + 1;
-        sequence.push(n);
-      }
+      // Disable button and show loading
+      generateBtn.disabled = true;
+      generateBtn.textContent = "Generating...";
 
-      const labels = sequence.map((_, i) => i); // step numbers
+      // Allow UI to update
+      setTimeout(() => {
+        let sequence = [n];
+        while (n !== 1) {
+          n = (n % 2 === 0) ? n / 2 : 3 * n + 1;
+          sequence.push(n);
+        }
 
-      const data = {
-        labels: labels,
-        datasets: [{
-          label: 'Collatz Sequence',
-          data: sequence,
-          fill: false,
-          borderColor: 'blue',
-          tension: 0.2,
-          pointRadius: 3,
-          pointBackgroundColor: 'blue'
-        }]
-      };
+        const labels = sequence.map((_, i) => i); // step numbers
 
-      const config = {
-        type: 'line',
-        data: data,
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: 'Step'
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Value'
+        const data = {
+          labels: labels,
+          datasets: [{
+            label: 'Collatz Sequence',
+            data: sequence,
+            fill: false,
+            borderColor: 'blue',
+            tension: 0.2,
+            pointRadius: 3,
+            pointBackgroundColor: 'blue'
+          }]
+        };
+
+        const config = {
+          type: 'line',
+          data: data,
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Step'
+                }
               },
-              beginAtZero: true
+              y: {
+                title: {
+                  display: true,
+                  text: 'Value'
+                },
+                beginAtZero: true
+              }
             }
           }
-        }
-      };
+        };
 
-      // Destroy previous chart if exists
-      if (chart) chart.destroy();
+        // Destroy previous chart if exists
+        if (chart) chart.destroy();
 
-      // Create new chart
-      chart = new Chart(
-        document.getElementById('collatzChart'),
-        config
-      );
+        // Create new chart
+        chart = new Chart(document.getElementById('collatzChart'), config);
+
+        // Display additional info
+        const max = Math.max(...sequence);
+        sequenceInfo.textContent = `Total steps: ${sequence.length - 1}, Max value: ${max}`;
+
+        // Restore button
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Generate Graph";
+      }, 100); // Small timeout to allow UI update
     }
   </script>
 
