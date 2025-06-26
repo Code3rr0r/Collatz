@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3x+1 (Collatz Conjecture)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    input, button {
+      padding: 8px;
+      font-size: 16px;
+    }
+    #output {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>3x+1 (Collatz Conjecture)</h1>
+  <p>Enter a positive integer:</p>
+  <input type="number" id="numberInput" min="1">
+  <button onclick="runCollatz()">Run</button>
+
+  <div id="output"></div>
+
+  <script>
+    function runCollatz() {
+      let n = parseInt(document.getElementById('numberInput').value);
+      if (isNaN(n) || n < 1) {
+        document.getElementById('output').innerHTML = "<p>Please enter a valid positive integer.</p>";
+        return;
+      }
+
+      let sequence = [n];
+      while (n !== 1) {
+        if (n % 2 === 0) {
+          n = n / 2;
+        } else {
+          n = 3 * n + 1;
+        }
+        sequence.push(n);
+      }
+
+      document.getElementById('output').innerHTML = 
+        "<p>Collatz sequence:</p><p>" + sequence.join(" → ") + "</p>";
+    }
+  </script>
+
+</body>
+</html>
