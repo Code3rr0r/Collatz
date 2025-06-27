@@ -45,7 +45,14 @@
   <h1>3x+1 Collatz Conjecture</h1>
   
   <label for="numberInput">Enter a positive integer:</label><br>
-  <input type="number" id="numberInput" min="1" placeholder="e.g. 27" aria-label="Positive integer input">
+  <input 
+    type="number" 
+    id="numberInput" 
+    min="1" 
+    placeholder="e.g. 27" 
+    aria-label="Positive integer input" 
+    onkeypress="if(event.key === 'Enter') runCollatz()"
+  >
   <button id="generateBtn" onclick="runCollatz()">Generate Graph</button>
   <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
   <button onclick="downloadChart()">Download Chart</button>
@@ -57,7 +64,17 @@
   </div>
 
   <script>
-    let chart; // Chart.js chart instance
+    let chart;
+
+    function getChartColors() {
+      const isDark = document.body.classList.contains('dark');
+      return {
+        borderColor: isDark ? '#90caf9' : 'blue',
+        pointBackgroundColor: isDark ? '#90caf9' : 'blue',
+        gridColor: isDark ? '#444' : '#ccc',
+        textColor: isDark ? '#fff' : '#000'
+      };
+    }
 
     function runCollatz() {
       const input = document.getElementById('numberInput');
@@ -86,6 +103,10 @@
         }
 
         const labels = sequence.map((_, i) => i);
+        const max = Math.max(...sequence);
+        const maxIndex = sequence.indexOf(max);
+
+        const colors = getChartColors();
 
         const data = {
           labels: labels,
@@ -93,10 +114,10 @@
             label: 'Collatz Sequence',
             data: sequence,
             fill: false,
-            borderColor: 'blue',
+            borderColor: colors.borderColor,
             tension: 0.2,
             pointRadius: 3,
-            pointBackgroundColor: 'blue'
+            pointBackgroundColor: colors.pointBackgroundColor
           }]
         };
 
@@ -109,15 +130,28 @@
               x: {
                 title: {
                   display: true,
-                  text: 'Step'
-                }
+                  text: 'Step',
+                  color: colors.textColor
+                },
+                ticks: { color: colors.textColor },
+                grid: { color: colors.gridColor }
               },
               y: {
                 title: {
                   display: true,
-                  text: 'Value'
+                  text: 'Value',
+                  color: colors.textColor
                 },
-                beginAtZero: true
+                beginAtZero: true,
+                ticks: { color: colors.textColor },
+                grid: { color: colors.gridColor }
+              }
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: colors.textColor
+                }
               }
             }
           }
@@ -126,8 +160,7 @@
         if (chart) chart.destroy();
         chart = new Chart(document.getElementById('collatzChart'), config);
 
-        const max = Math.max(...sequence);
-        sequenceInfo.textContent = `Total steps: ${sequence.length - 1}, Max value: ${max}`;
+        sequenceInfo.textContent = `Total steps: ${sequence.length - 1}, Max value: ${max} (at step ${maxIndex})`;
 
         generateBtn.disabled = false;
         generateBtn.textContent = "Generate Graph";
@@ -136,6 +169,7 @@
 
     function toggleDarkMode() {
       document.body.classList.toggle('dark');
+      if (chart) runCollatz(); // Refresh chart with new theme colors
     }
 
     function downloadChart() {
