@@ -29,7 +29,6 @@
       font-weight: bold;
     }
 
-    /* Dark mode styles */
     body.dark {
       background-color: #121212;
       color: white;
@@ -45,6 +44,30 @@
 
     #sequenceInfo.success {
       color: inherit;
+    }
+
+    #aboutSection {
+      display: none;
+      margin-top: 20px;
+      padding: 15px;
+      border-left: 4px solid #007bff;
+      background-color: #f9f9f9;
+      color: #333;
+      max-width: 800px;
+    }
+
+    body.dark #aboutSection {
+      background-color: #1e1e1e;
+      color: #ddd;
+      border-left-color: #90caf9;
+    }
+
+    #aboutSection h2 {
+      margin-top: 0;
+    }
+
+    #aboutSection ul {
+      padding-left: 20px;
     }
   </style>
 </head>
@@ -64,11 +87,39 @@
   <button id="generateBtn" onclick="runCollatz()">Generate Graph</button>
   <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
   <button onclick="downloadChart()">Download Chart</button>
+  <button onclick="toggleAbout()">About</button>
 
   <div id="sequenceInfo" aria-live="polite"></div>
 
   <div id="chartContainer">
     <canvas id="collatzChart"></canvas>
+  </div>
+
+  <div id="aboutSection">
+    <h2>About the 3x+1 (Collatz) Conjecture</h2>
+    <p>
+      The Collatz Conjecture is an unsolved mathematical problem that starts with any positive integer:
+    </p>
+    <ul>
+      <li>If the number is <strong>even</strong>, divide it by 2</li>
+      <li>If it's <strong>odd</strong>, multiply by 3 and add 1</li>
+      <li>Repeat the process with the result</li>
+    </ul>
+    <p>
+      The conjecture states that no matter what number you start with, you will eventually reach 1.
+    </p>
+    <p>
+      This tool allows you to visualize how many steps it takes and how high the values get along the way.
+      You can:
+    </p>
+    <ul>
+      <li>Enter a number and click <strong>Generate Graph</strong> to see its sequence</li>
+      <li>Toggle between <strong>light and dark mode</strong></li>
+      <li><strong>Download</strong> the chart as a PNG image</li>
+    </ul>
+    <p style="font-style: italic; color: gray;">
+      This visualization uses Chart.js and runs entirely in your browser.
+    </p>
   </div>
 
   <script>
@@ -197,7 +248,6 @@
         generateBtn.disabled = false;
         generateBtn.textContent = "Generate Graph";
 
-        // Scroll to chart
         document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
@@ -213,6 +263,11 @@
       link.download = 'collatz_chart.png';
       link.href = chart.toBase64Image();
       link.click();
+    }
+
+    function toggleAbout() {
+      const about = document.getElementById('aboutSection');
+      about.style.display = about.style.display === 'none' ? 'block' : 'none';
     }
   </script>
 
