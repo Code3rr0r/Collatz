@@ -8,20 +8,35 @@
     body {
       font-family: Arial, sans-serif;
       margin: 40px;
+      transition: background-color 0.3s, color 0.3s;
     }
+
     input, button {
       padding: 8px;
       font-size: 16px;
+      margin-right: 10px;
     }
+
     #chartContainer {
       margin-top: 30px;
       max-width: 100%;
       width: 100%;
       max-width: 800px;
     }
+
     #sequenceInfo {
       margin-top: 20px;
       font-weight: bold;
+    }
+
+    /* Dark mode styles */
+    body.dark {
+      background-color: #121212;
+      color: white;
+    }
+
+    body.dark canvas {
+      background-color: #1e1e1e;
     }
   </style>
 </head>
@@ -32,15 +47,17 @@
   <label for="numberInput">Enter a positive integer:</label><br>
   <input type="number" id="numberInput" min="1" placeholder="e.g. 27" aria-label="Positive integer input">
   <button id="generateBtn" onclick="runCollatz()">Generate Graph</button>
+  <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+  <button onclick="downloadChart()">Download Chart</button>
 
-  <div id="sequenceInfo"></div>
+  <div id="sequenceInfo" aria-live="polite"></div>
 
   <div id="chartContainer">
     <canvas id="collatzChart"></canvas>
   </div>
 
   <script>
-    let chart; // to hold the Chart.js chart
+    let chart; // Chart.js chart instance
 
     function runCollatz() {
       const input = document.getElementById('numberInput');
@@ -53,11 +70,14 @@
         return;
       }
 
-      // Disable button and show loading
+      if (n > 1000000) {
+        alert("That number is quite large and may cause performance issues.");
+        return;
+      }
+
       generateBtn.disabled = true;
       generateBtn.textContent = "Generating...";
 
-      // Allow UI to update
       setTimeout(() => {
         let sequence = [n];
         while (n !== 1) {
@@ -65,7 +85,7 @@
           sequence.push(n);
         }
 
-        const labels = sequence.map((_, i) => i); // step numbers
+        const labels = sequence.map((_, i) => i);
 
         const data = {
           labels: labels,
@@ -103,20 +123,27 @@
           }
         };
 
-        // Destroy previous chart if exists
         if (chart) chart.destroy();
-
-        // Create new chart
         chart = new Chart(document.getElementById('collatzChart'), config);
 
-        // Display additional info
         const max = Math.max(...sequence);
         sequenceInfo.textContent = `Total steps: ${sequence.length - 1}, Max value: ${max}`;
 
-        // Restore button
         generateBtn.disabled = false;
         generateBtn.textContent = "Generate Graph";
-      }, 100); // Small timeout to allow UI update
+      }, 100);
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+    }
+
+    function downloadChart() {
+      if (!chart) return;
+      const link = document.createElement('a');
+      link.download = 'collatz_chart.png';
+      link.href = chart.toBase64Image();
+      link.click();
     }
   </script>
 
