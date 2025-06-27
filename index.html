@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>3x+1 Collatz Conjecture Graph</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -11,10 +12,43 @@
       transition: background-color 0.3s, color 0.3s;
     }
 
+    fieldset {
+      border: 1px solid #ccc;
+      padding: 15px 20px 20px 20px;
+      max-width: 800px;
+    }
+
+    legend {
+      font-weight: bold;
+      padding: 0 8px;
+    }
+
     input, button {
       padding: 8px;
       font-size: 16px;
       margin-right: 10px;
+      margin-top: 10px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    #spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(0, 0, 255, 0.2);
+      border-top-color: blue;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-left: 8px;
+      visibility: hidden;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     #chartContainer {
@@ -27,6 +61,7 @@
     #sequenceInfo {
       margin-top: 20px;
       font-weight: bold;
+      max-width: 800px;
     }
 
     body.dark {
@@ -69,25 +104,45 @@
     #aboutSection ul {
       padding-left: 20px;
     }
+
+    /* Responsive Buttons */
+    @media (max-width: 600px) {
+      input, button {
+        display: block;
+        margin-right: 0;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      button {
+        margin-top: 10px;
+      }
+    }
   </style>
 </head>
 <body>
 
   <h1>3x+1 Collatz Conjecture</h1>
 
-  <label for="numberInput">Enter a positive integer:</label><br>
-  <input 
-    type="number" 
-    id="numberInput" 
-    min="1" 
-    placeholder="e.g. 27" 
-    aria-label="Positive integer input" 
-    onkeypress="if(event.key === 'Enter') runCollatz()"
-  >
-  <button id="generateBtn" onclick="runCollatz()">Generate Graph</button>
-  <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
-  <button onclick="downloadChart()">Download Chart</button>
-  <button onclick="toggleAbout()">About</button>
+  <fieldset>
+    <legend>Input & Controls</legend>
+    <label for="numberInput">Enter a positive integer:</label><br />
+    <input
+      type="number"
+      id="numberInput"
+      min="1"
+      placeholder="e.g. 27"
+      aria-label="Positive integer input"
+      onkeypress="if(event.key === 'Enter') runCollatz()"
+    />
+    <button id="generateBtn" onclick="runCollatz()" aria-live="polite" aria-busy="false">
+      Generate Graph
+      <span id="spinner" aria-hidden="true"></span>
+    </button>
+    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    <button onclick="downloadChart()">Download Chart</button>
+    <button onclick="toggleAbout()">About</button>
+  </fieldset>
 
   <div id="sequenceInfo" aria-live="polite"></div>
 
@@ -126,7 +181,16 @@
     let chart;
 
     window.onload = () => {
-      document.getElementById('numberInput').focus();
+      const input = document.getElementById('numberInput');
+      input.focus();
+
+      // Check for ?n= in URL and auto-run if valid
+      const params = new URLSearchParams(window.location.search);
+      const n = params.get('n');
+      if (n && /^\d+$/.test(n) && parseInt(n) > 0) {
+        input.value = n;
+        runCollatz();
+      }
     };
 
     function getChartColors() {
@@ -139,12 +203,21 @@
       };
     }
 
+    function setLoading(loading) {
+      const btn = document.getElementById('generateBtn');
+      const spinner = document.getElementById('spinner');
+      btn.disabled = loading;
+      btn.setAttribute('aria-busy', loading);
+      spinner.style.visibility = loading ? 'visible' : 'hidden';
+      btn.firstChild.textContent = loading ? 'Generating...' : 'Generate Graph';
+    }
+
     function runCollatz() {
       const input = document.getElementById('numberInput');
-      const generateBtn = document.getElementById('generateBtn');
       const sequenceInfo = document.getElementById('sequenceInfo');
       let n = parseInt(input.value);
       sequenceInfo.className = '';
+      sequenceInfo.textContent = '';
 
       if (isNaN(n) || n < 1) {
         sequenceInfo.textContent = "❌ Please enter a valid positive integer.";
@@ -153,14 +226,12 @@
       }
 
       if (n > 1000000) {
-        sequenceInfo.textContent = "⚠️ That number is quite large and may cause performance issues.";
-        sequenceInfo.classList.add('error');
-        return;
+        if (!confirm("⚠️ That number is quite large and may cause performance issues. Do you want to proceed?")) {
+          return;
+        }
       }
 
-      generateBtn.disabled = true;
-      generateBtn.textContent = "Generating...";
-      sequenceInfo.textContent = "";
+      setLoading(true);
 
       setTimeout(() => {
         const start = performance.now();
@@ -245,8 +316,7 @@
         sequenceInfo.textContent = `✅ Total steps: ${sequence.length - 1}, Max value: ${max} (at step ${maxIndex}) | Computed in ${duration} ms`;
         sequenceInfo.classList.add('success');
 
-        generateBtn.disabled = false;
-        generateBtn.textContent = "Generate Graph";
+        setLoading(false);
 
         document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth' });
       }, 100);
