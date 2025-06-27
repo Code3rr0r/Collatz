@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>3x+1 Collatz Conjecture Graph</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -141,6 +142,7 @@
     </button>
     <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     <button onclick="downloadChart()">Download Chart</button>
+    <button onclick="downloadCSV()">Download CSV</button>
     <button onclick="toggleAbout()">About</button>
   </fieldset>
 
@@ -171,6 +173,8 @@
       <li>Enter a number and click <strong>Generate Graph</strong> to see its sequence</li>
       <li>Toggle between <strong>light and dark mode</strong></li>
       <li><strong>Download</strong> the chart as a PNG image</li>
+      <li><strong>Download</strong> the sequence data as CSV</li>
+      <li><strong>Zoom and pan</strong> the graph with mouse or touch gestures</li>
     </ul>
     <p style="font-style: italic; color: gray;">
       This visualization uses Chart.js and runs entirely in your browser.
@@ -179,6 +183,7 @@
 
   <script>
     let chart;
+    let currentSequence = [];
 
     window.onload = () => {
       const input = document.getElementById('numberInput');
@@ -243,6 +248,8 @@
           sequence.push(current);
         }
 
+        currentSequence = sequence; // store for CSV download
+
         const labels = sequence.map((_, i) => i);
         const max = Math.max(...sequence);
         const maxIndex = sequence.indexOf(max);
@@ -305,9 +312,25 @@
                 labels: {
                   color: colors.textColor
                 }
+              },
+              zoom: {
+                zoom: {
+                  wheel: {
+                    enabled: true
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'xy'
+                },
+                pan: {
+                  enabled: true,
+                  mode: 'xy'
+                }
               }
             }
-          }
+          },
+          plugins: [Chart.Zoom]
         };
 
         if (chart) chart.destroy();
@@ -333,6 +356,25 @@
       link.download = 'collatz_chart.png';
       link.href = chart.toBase64Image();
       link.click();
+    }
+
+    function downloadCSV() {
+      if (!currentSequence || currentSequence.length === 0) {
+        alert("Please generate a sequence first.");
+        return;
+      }
+      let csvContent = "data:text/csv;charset=utf-8,Step,Value\n";
+      currentSequence.forEach((val, idx) => {
+        csvContent += `${idx},${val}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "collatz_sequence.csv");
+      document.body.appendChild(link); // Required for Firefox
+      link.click();
+      document.body.removeChild(link);
     }
 
     function toggleAbout() {
