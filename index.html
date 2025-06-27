@@ -143,6 +143,7 @@
     <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     <button onclick="downloadChart()">Download Chart</button>
     <button onclick="downloadCSV()">Download CSV</button>
+    <button onclick="resetZoom()">Reset Zoom</button>
     <button onclick="toggleAbout()">About</button>
   </fieldset>
 
@@ -175,6 +176,7 @@
       <li><strong>Download</strong> the chart as a PNG image</li>
       <li><strong>Download</strong> the sequence data as CSV</li>
       <li><strong>Zoom and pan</strong> the graph with mouse or touch gestures</li>
+      <li><strong>Reset</strong> zoom anytime</li>
     </ul>
     <p style="font-style: italic; color: gray;">
       This visualization uses Chart.js and runs entirely in your browser.
@@ -375,6 +377,12 @@
       document.body.appendChild(link); // Required for Firefox
       link.click();
       document.body.removeChild(link);
+    }
+
+    function resetZoom() {
+      if (chart) {
+        chart.resetZoom();
+      }
     }
 
     function toggleAbout() {
