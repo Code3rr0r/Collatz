@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3x+1 Collatz Conjecture Graph</title>
+  <title>3x+1 Collatz Conjecture Graph (Optimized)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
@@ -106,7 +106,6 @@
       padding-left: 20px;
     }
 
-    /* Responsive Buttons */
     @media (max-width: 600px) {
       input, button {
         display: block;
@@ -114,10 +113,7 @@
         width: 100%;
         box-sizing: border-box;
       }
-
-      button {
-        margin-top: 10px;
-      }
+      button { margin-top: 10px; }
     }
   </style>
 </head>
@@ -167,21 +163,22 @@
       The conjecture states that no matter what number you start with, you will eventually reach 1.
     </p>
     <p>
-      This tool allows you to visualize how many steps it takes and how high the values get along the way.
-      You can:
-    </p>
-    <ul>
-      <li>Enter a number and click <strong>Generate Graph</strong> to see its sequence</li>
-      <li>Toggle between <strong>light and dark mode</strong></li>
-      <li><strong>Download</strong> the chart as a PNG image</li>
-      <li><strong>Download</strong> the sequence data as CSV</li>
-      <li><strong>Zoom and pan</strong> the graph with mouse or touch gestures</li>
-      <li><strong>Reset</strong> zoom anytime</li>
-    </ul>
-    <p style="font-style: italic; color: gray;">
-      This visualization uses Chart.js and runs entirely in your browser.
+      This tool visualizes how many steps it takes and how high the values get.
     </p>
   </div>
+
+  <!-- 🔹 Embedded Web Worker for fast computation -->
+  <script id="collatz-worker" type="javascript/worker">
+    self.onmessage = function(e) {
+      let n = e.data;
+      let seq = [n];
+      while (n !== 1) {
+        n = n % 2 === 0 ? n / 2 : 3 * n + 1;
+        seq.push(n);
+      }
+      self.postMessage(seq);
+    };
+  </script>
 
   <script>
     let chart;
@@ -191,7 +188,7 @@
       const input = document.getElementById('numberInput');
       input.focus();
 
-      // Check for ?n= in URL and auto-run if valid
+      // Auto-run with ?n= query
       const params = new URLSearchParams(window.location.search);
       const n = params.get('n');
       if (n && /^\d+$/.test(n) && parseInt(n) > 0) {
@@ -199,6 +196,11 @@
         runCollatz();
       }
     };
+
+    function createWorker() {
+      const blob = new Blob([document.querySelector('#collatz-worker').textContent], { type: 'application/javascript' });
+      return new Worker(URL.createObjectURL(blob));
+    }
 
     function getChartColors() {
       const isDark = document.body.classList.contains('dark');
@@ -222,7 +224,7 @@
     function runCollatz() {
       const input = document.getElementById('numberInput');
       const sequenceInfo = document.getElementById('sequenceInfo');
-      let n = parseInt(input.value);
+      const n = parseInt(input.value);
       sequenceInfo.className = '';
       sequenceInfo.textContent = '';
 
@@ -232,124 +234,81 @@
         return;
       }
 
-      if (n > 1000000) {
-        if (!confirm("⚠️ That number is quite large and may cause performance issues. Do you want to proceed?")) {
-          return;
-        }
-      }
-
       setLoading(true);
+      const worker = createWorker();
+      const start = performance.now();
 
-      setTimeout(() => {
-        const start = performance.now();
-
-        let sequence = [n];
-        let current = n;
-        while (current !== 1) {
-          current = (current % 2 === 0) ? current / 2 : 3 * current + 1;
-          sequence.push(current);
-        }
-
-        currentSequence = sequence; // store for CSV download
-
-        const labels = sequence.map((_, i) => i);
-        const max = Math.max(...sequence);
-        const maxIndex = sequence.indexOf(max);
+      worker.onmessage = function(e) {
+        const sequence = e.data;
         const duration = (performance.now() - start).toFixed(2);
+        renderChart(sequence, duration);
+        setLoading(false);
+        worker.terminate();
+      };
 
-        const colors = getChartColors();
+      requestIdleCallback(() => worker.postMessage(n));
+    }
 
-        const data = {
-          labels: labels,
-          datasets: [{
-            label: 'Collatz Sequence',
-            data: sequence,
-            fill: false,
-            borderColor: colors.borderColor,
-            tension: 0.2,
-            pointRadius: 3,
-            pointBackgroundColor: colors.pointBackgroundColor
-          }]
-        };
+    function renderChart(sequence, duration) {
+      currentSequence = sequence;
+      const sequenceInfo = document.getElementById('sequenceInfo');
+      const labels = sequence.map((_, i) => i);
+      const max = Math.max(...sequence);
+      const maxIndex = sequence.indexOf(max);
 
-        const config = {
-          type: 'line',
-          data: data,
-          options: {
-            responsive: true,
-            animation: {
-              duration: 1000,
-              easing: 'easeOutBounce'
+      const colors = getChartColors();
+      const data = {
+        labels: labels,
+        datasets: [{
+          label: 'Collatz Sequence',
+          data: sequence,
+          fill: false,
+          borderColor: colors.borderColor,
+          tension: 0.2,
+          pointRadius: sequence.length > 2000 ? 0 : 2,
+          pointBackgroundColor: colors.pointBackgroundColor
+        }]
+      };
+
+      const config = {
+        type: 'line',
+        data: data,
+        options: {
+          animation: false,
+          responsive: true,
+          scales: {
+            x: {
+              title: { display: true, text: 'Step', color: colors.textColor },
+              ticks: { color: colors.textColor },
+              grid: { color: colors.gridColor }
             },
-            scales: {
-              x: {
-                title: {
-                  display: true,
-                  text: 'Step',
-                  color: colors.textColor
-                },
-                ticks: { color: colors.textColor },
-                grid: { color: colors.gridColor }
-              },
-              y: {
-                title: {
-                  display: true,
-                  text: 'Value',
-                  color: colors.textColor
-                },
-                beginAtZero: true,
-                ticks: { color: colors.textColor },
-                grid: { color: colors.gridColor }
-              }
-            },
-            plugins: {
-              tooltip: {
-                callbacks: {
-                  label: function(context) {
-                    return `Step ${context.label}: ${context.raw}`;
-                  }
-                }
-              },
-              legend: {
-                labels: {
-                  color: colors.textColor
-                }
-              },
-              zoom: {
-                zoom: {
-                  wheel: {
-                    enabled: true
-                  },
-                  pinch: {
-                    enabled: true
-                  },
-                  mode: 'xy'
-                },
-                pan: {
-                  enabled: true,
-                  mode: 'xy'
-                }
-              }
+            y: {
+              title: { display: true, text: 'Value', color: colors.textColor },
+              ticks: { color: colors.textColor },
+              grid: { color: colors.gridColor }
             }
           },
-          plugins: [Chart.Zoom]
-        };
+          plugins: {
+            legend: { labels: { color: colors.textColor } },
+            zoom: {
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+              pan: { enabled: true, mode: 'xy' }
+            }
+          }
+        }
+      };
 
-        if (chart) chart.destroy();
-        chart = new Chart(document.getElementById('collatzChart'), config);
+      if (chart) chart.destroy();
+      chart = new Chart(document.getElementById('collatzChart'), config);
 
-        sequenceInfo.textContent = `✅ Total steps: ${sequence.length - 1}, Max value: ${max} (at step ${maxIndex}) | Computed in ${duration} ms`;
-        sequenceInfo.classList.add('success');
-
-        setLoading(false);
-
-        document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      sequenceInfo.textContent = `✅ Total steps: ${sequence.length - 1}, Max value: ${max} (at step ${maxIndex}) | Computed in ${duration} ms`;
+      sequenceInfo.classList.add('success');
+      document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth' });
     }
 
     function toggleDarkMode() {
       document.body.classList.toggle('dark');
-      if (chart) runCollatz(); // Refresh chart with new theme colors
+      if (currentSequence.length > 0) renderChart(currentSequence, 0);
     }
 
     function downloadChart() {
@@ -374,15 +333,13 @@
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", "collatz_sequence.csv");
-      document.body.appendChild(link); // Required for Firefox
+      document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
 
     function resetZoom() {
-      if (chart) {
-        chart.resetZoom();
-      }
+      if (chart) chart.resetZoom();
     }
 
     function toggleAbout() {
