@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3x+1 Collatz Conjecture Graph (Optimized)</title>
+  <title>3x+1 Collatz Conjecture Visualizer</title>
+  <meta name="theme-color" content="#121212" />
+  <link rel="manifest" href="manifest.json" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
@@ -19,10 +21,7 @@
       max-width: 800px;
     }
 
-    legend {
-      font-weight: bold;
-      padding: 0 8px;
-    }
+    legend { font-weight: bold; padding: 0 8px; }
 
     input, button {
       padding: 8px;
@@ -31,9 +30,7 @@
       margin-top: 10px;
     }
 
-    button {
-      cursor: pointer;
-    }
+    button { cursor: pointer; }
 
     #spinner {
       display: inline-block;
@@ -48,16 +45,9 @@
       visibility: hidden;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    #chartContainer {
-      margin-top: 30px;
-      max-width: 100%;
-      width: 100%;
-      max-width: 800px;
-    }
+    #chartContainer { margin-top: 30px; max-width: 800px; }
 
     #sequenceInfo {
       margin-top: 20px;
@@ -65,22 +55,10 @@
       max-width: 800px;
     }
 
-    body.dark {
-      background-color: #121212;
-      color: white;
-    }
-
-    body.dark canvas {
-      background-color: #1e1e1e;
-    }
-
-    #sequenceInfo.error {
-      color: red;
-    }
-
-    #sequenceInfo.success {
-      color: inherit;
-    }
+    body.dark { background-color: #121212; color: white; }
+    body.dark canvas { background-color: #1e1e1e; }
+    #sequenceInfo.error { color: red; }
+    #sequenceInfo.success { color: inherit; }
 
     #aboutSection {
       display: none;
@@ -98,13 +76,7 @@
       border-left-color: #90caf9;
     }
 
-    #aboutSection h2 {
-      margin-top: 0;
-    }
-
-    #aboutSection ul {
-      padding-left: 20px;
-    }
+    #aboutSection h2 { margin-top: 0; }
 
     @media (max-width: 600px) {
       input, button {
@@ -119,22 +91,14 @@
 </head>
 <body>
 
-  <h1>3x+1 Collatz Conjecture</h1>
+  <h1>3x+1 Collatz Conjecture Visualizer</h1>
 
   <fieldset>
     <legend>Input & Controls</legend>
-    <label for="numberInput">Enter a positive integer:</label><br />
-    <input
-      type="number"
-      id="numberInput"
-      min="1"
-      placeholder="e.g. 27"
-      aria-label="Positive integer input"
-      onkeypress="if(event.key === 'Enter') runCollatz()"
-    />
-    <button id="generateBtn" onclick="runCollatz()" aria-live="polite" aria-busy="false">
-      Generate Graph
-      <span id="spinner" aria-hidden="true"></span>
+    <label for="numberInput">Enter one or more numbers (comma-separated):</label><br />
+    <input type="text" id="numberInput" placeholder="e.g. 5, 11, 27" onkeypress="if(event.key==='Enter') runCollatz()" />
+    <button id="generateBtn" onclick="runCollatz()" aria-live="polite">
+      Generate Graph <span id="spinner"></span>
     </button>
     <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     <button onclick="downloadChart()">Download Chart</button>
@@ -153,30 +117,30 @@
     <h2>About the 3x+1 (Collatz) Conjecture</h2>
     <p>
       The Collatz Conjecture is an unsolved mathematical problem that starts with any positive integer:
-    </p>
-    <ul>
-      <li>If the number is <strong>even</strong>, divide it by 2</li>
-      <li>If it's <strong>odd</strong>, multiply by 3 and add 1</li>
-      <li>Repeat the process with the result</li>
-    </ul>
-    <p>
-      The conjecture states that no matter what number you start with, you will eventually reach 1.
-    </p>
-    <p>
-      This tool visualizes how many steps it takes and how high the values get.
+      <ul>
+        <li>If even, divide it by 2</li>
+        <li>If odd, multiply by 3 and add 1</li>
+        <li>Repeat until you reach 1</li>
+      </ul>
+      No matter what number you start with, you always reach 1 — or so the conjecture goes!
     </p>
   </div>
 
-  <!-- 🔹 Embedded Web Worker for fast computation -->
+  <!-- 🧠 Web Worker for fast computation -->
   <script id="collatz-worker" type="javascript/worker">
     self.onmessage = function(e) {
-      let n = e.data;
+      const { n, id } = e.data;
       let seq = [n];
+      let steps = 0;
       while (n !== 1) {
         n = n % 2 === 0 ? n / 2 : 3 * n + 1;
         seq.push(n);
+        steps++;
+        if (steps % 10000 === 0) {
+          self.postMessage({ type: 'progress', id, steps });
+        }
       }
-      self.postMessage(seq);
+      self.postMessage({ type: 'done', id, sequence: seq });
     };
   </script>
 
@@ -187,13 +151,8 @@
     window.onload = () => {
       const input = document.getElementById('numberInput');
       input.focus();
-
-      // Auto-run with ?n= query
-      const params = new URLSearchParams(window.location.search);
-      const n = params.get('n');
-      if (n && /^\d+$/.test(n) && parseInt(n) > 0) {
-        input.value = n;
-        runCollatz();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js');
       }
     };
 
@@ -206,7 +165,6 @@
       const isDark = document.body.classList.contains('dark');
       return {
         borderColor: isDark ? '#90caf9' : 'blue',
-        pointBackgroundColor: isDark ? '#90caf9' : 'blue',
         gridColor: isDark ? '#444' : '#ccc',
         textColor: isDark ? '#fff' : '#000'
       };
@@ -216,7 +174,6 @@
       const btn = document.getElementById('generateBtn');
       const spinner = document.getElementById('spinner');
       btn.disabled = loading;
-      btn.setAttribute('aria-busy', loading);
       spinner.style.visibility = loading ? 'visible' : 'hidden';
       btn.firstChild.textContent = loading ? 'Generating...' : 'Generate Graph';
     }
@@ -224,76 +181,74 @@
     function runCollatz() {
       const input = document.getElementById('numberInput');
       const sequenceInfo = document.getElementById('sequenceInfo');
-      const n = parseInt(input.value);
       sequenceInfo.className = '';
       sequenceInfo.textContent = '';
 
-      if (isNaN(n) || n < 1) {
-        sequenceInfo.textContent = "❌ Please enter a valid positive integer.";
+      const values = input.value.split(',').map(v => parseInt(v.trim())).filter(v => v > 0);
+      if (values.length === 0) {
+        sequenceInfo.textContent = "❌ Please enter at least one valid positive integer.";
         sequenceInfo.classList.add('error');
         return;
       }
 
       setLoading(true);
-      const worker = createWorker();
       const start = performance.now();
+      const results = [];
+      let completed = 0;
 
-      worker.onmessage = function(e) {
-        const sequence = e.data;
-        const duration = (performance.now() - start).toFixed(2);
-        renderChart(sequence, duration);
-        setLoading(false);
-        worker.terminate();
-      };
-
-      requestIdleCallback(() => worker.postMessage(n));
+      values.forEach((n, idx) => {
+        const worker = createWorker();
+        worker.onmessage = function(e) {
+          const msg = e.data;
+          if (msg.type === 'progress') {
+            sequenceInfo.textContent = `⏳ n=${n} → steps so far: ${msg.steps.toLocaleString()}`;
+          } else if (msg.type === 'done') {
+            results.push({ n, sequence: msg.sequence });
+            worker.terminate();
+            completed++;
+            sequenceInfo.textContent = `⏳ Completed ${completed}/${values.length}`;
+            if (completed === values.length) {
+              const duration = (performance.now() - start).toFixed(2);
+              renderMultipleCharts(results, duration);
+              setLoading(false);
+            }
+          }
+        };
+        worker.postMessage({ n, id: idx });
+      });
     }
 
-    function renderChart(sequence, duration) {
-      currentSequence = sequence;
+    function renderMultipleCharts(results, duration) {
+      currentSequence = results.map(r => r.sequence);
       const sequenceInfo = document.getElementById('sequenceInfo');
-      const labels = sequence.map((_, i) => i);
-      const max = Math.max(...sequence);
-      const maxIndex = sequence.indexOf(max);
+      const colorSet = getChartColors();
+      const colors = [
+        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
+        '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'
+      ];
 
-      const colors = getChartColors();
-      const data = {
-        labels: labels,
-        datasets: [{
-          label: 'Collatz Sequence',
-          data: sequence,
-          fill: false,
-          borderColor: colors.borderColor,
-          tension: 0.2,
-          pointRadius: sequence.length > 2000 ? 0 : 2,
-          pointBackgroundColor: colors.pointBackgroundColor
-        }]
-      };
+      const datasets = results.map((r, i) => ({
+        label: `n=${r.n}`,
+        data: r.sequence.map((y, idx) => ({ x: idx, y })),
+        borderColor: colors[i % colors.length],
+        tension: 0.2,
+        fill: false,
+        pointRadius: r.sequence.length > 2000 ? 0 : 2
+      }));
 
       const config = {
         type: 'line',
-        data: data,
+        data: { datasets },
         options: {
           animation: false,
           responsive: true,
           scales: {
-            x: {
-              title: { display: true, text: 'Step', color: colors.textColor },
-              ticks: { color: colors.textColor },
-              grid: { color: colors.gridColor }
-            },
-            y: {
-              title: { display: true, text: 'Value', color: colors.textColor },
-              ticks: { color: colors.textColor },
-              grid: { color: colors.gridColor }
-            }
+            x: { title: { display: true, text: 'Step', color: colorSet.textColor }, ticks: { color: colorSet.textColor }, grid: { color: colorSet.gridColor } },
+            y: { title: { display: true, text: 'Value', color: colorSet.textColor }, ticks: { color: colorSet.textColor }, grid: { color: colorSet.gridColor } }
           },
           plugins: {
-            legend: { labels: { color: colors.textColor } },
-            zoom: {
-              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
-              pan: { enabled: true, mode: 'xy' }
-            }
+            legend: { labels: { color: colorSet.textColor } },
+            zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }, pan: { enabled: true, mode: 'xy' } }
           }
         }
       };
@@ -301,14 +256,17 @@
       if (chart) chart.destroy();
       chart = new Chart(document.getElementById('collatzChart'), config);
 
-      sequenceInfo.textContent = `✅ Total steps: ${sequence.length - 1}, Max value: ${max} (at step ${maxIndex}) | Computed in ${duration} ms`;
+      sequenceInfo.textContent = `✅ Computed ${results.length} sequence(s) in ${duration} ms`;
       sequenceInfo.classList.add('success');
       document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth' });
     }
 
     function toggleDarkMode() {
       document.body.classList.toggle('dark');
-      if (currentSequence.length > 0) renderChart(currentSequence, 0);
+      if (currentSequence.length > 0) {
+        const seqs = Array.isArray(currentSequence[0]) ? currentSequence.map((s, i) => ({ n: i + 1, sequence: s })) : [];
+        if (seqs.length) renderMultipleCharts(seqs, 0);
+      }
     }
 
     function downloadChart() {
@@ -320,33 +278,27 @@
     }
 
     function downloadCSV() {
-      if (!currentSequence || currentSequence.length === 0) {
+      if (!currentSequence.length) {
         alert("Please generate a sequence first.");
         return;
       }
-      let csvContent = "data:text/csv;charset=utf-8,Step,Value\n";
-      currentSequence.forEach((val, idx) => {
-        csvContent += `${idx},${val}\n`;
+      let csvContent = "data:text/csv;charset=utf-8,Sequence,Step,Value\n";
+      currentSequence.forEach((seq, si) => {
+        seq.forEach((val, idx) => {
+          csvContent += `${si+1},${idx},${val}\n`;
+        });
       });
-
-      const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "collatz_sequence.csv");
-      document.body.appendChild(link);
+      link.href = encodeURI(csvContent);
+      link.download = "collatz_sequences.csv";
       link.click();
-      document.body.removeChild(link);
     }
 
-    function resetZoom() {
-      if (chart) chart.resetZoom();
-    }
-
+    function resetZoom() { if (chart) chart.resetZoom(); }
     function toggleAbout() {
       const about = document.getElementById('aboutSection');
       about.style.display = about.style.display === 'none' ? 'block' : 'none';
     }
   </script>
-
 </body>
 </html>
